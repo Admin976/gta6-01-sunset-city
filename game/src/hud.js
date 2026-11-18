@@ -8,9 +8,13 @@ export class HUD {
     this.district = $('district');
     this.stars = $('stars');
     this.speed = $('speed');
+    this.ammo = $('ammo');
+    this.ride = $('ride');
     this._district = '';
     this._wanted = -1;
     this._money = -1;
+    this._ammo = -1;
+    this._ride = '';
   }
 
   update(s) {
@@ -28,6 +32,19 @@ export class HUD {
     if (s.wanted !== this._wanted) {
       this._wanted = s.wanted;
       this.stars.textContent = '\u2605'.repeat(s.wanted) + '\u2606'.repeat(Math.max(0, 5 - s.wanted));
+      this.stars.classList.toggle('hot', s.wanted > 0);
+    }
+
+    const a = s.ammo | 0;
+    if (a !== this._ammo) {
+      this._ammo = a;
+      this.ammo.textContent = a;
+    }
+
+    const ride = s.ride || '';
+    if (ride !== this._ride) {
+      this._ride = ride;
+      this.ride.textContent = ride;
     }
 
     if (s.district !== this._district) {

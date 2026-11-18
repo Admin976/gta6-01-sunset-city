@@ -35,10 +35,24 @@ export class Minimap {
     g.strokeRect(0.5, 0.5, this.size - 1, this.size - 1);
   }
 
-  update(pos, facing) {
+  update(pos, facing, extra) {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.size, this.size);
     ctx.drawImage(this.base, 0, 0);
+    const X = (v) => v * this.k + this.size / 2;
+
+    if (extra && extra.police) {
+      for (const p of extra.police) {
+        ctx.fillStyle = '#6aa6ff';
+        ctx.fillRect(X(p.x) - 2, X(p.z) - 2, 4, 4);
+      }
+    }
+    if (extra && extra.objective) {
+      const o = extra.objective;
+      const s = 3 + (Math.sin(performance.now() * 0.005) + 1) * 2;
+      ctx.fillStyle = '#ffd76a';
+      ctx.fillRect(X(o.x) - s, X(o.z) - s, s * 2, s * 2);
+    }
 
     const px = pos.x * this.k + this.size / 2;
     const py = pos.z * this.k + this.size / 2;

@@ -12,7 +12,12 @@
   #tl { position: absolute; left: 24px; top: 18px; }
   #clock { font-size: 30px; letter-spacing: 2px; color: #ffe6b8; }
   #district { font-size: 12px; letter-spacing: 5px; color: #ffb27a; text-transform: uppercase; margin-top: 2px; }
-  #stars { position: absolute; right: 24px; top: 20px; font-size: 24px; color: #ffcf6a; letter-spacing: 3px; }
+  #stars { position: absolute; right: 24px; top: 20px; font-size: 24px; color: #ffcf6a; letter-spacing: 3px; text-shadow: 0 0 14px rgba(255,140,60,.8); }
+  #stars.hot { animation: heat 1s steps(2) infinite; }
+  @keyframes heat { 50% { color: #ff8a4a; text-shadow: 0 0 22px rgba(255,60,40,.95); } }
+  #ammo-box { position: absolute; left: 24px; bottom: 96px; font-size: 24px; color: #ffe6b8; }
+  #ammo-box small { display: block; font-size: 10px; letter-spacing: 3px; color: #ffb27a; }
+  #ride { position: absolute; left: 24px; bottom: 148px; font-size: 11px; letter-spacing: 3px; color: #9fd0e0; text-transform: uppercase; }
   #bars { position: absolute; left: 24px; bottom: 22px; width: 230px; }
   #hp { height: 10px; background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.25); margin-top: 6px; }
   #hp-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #63d47a, #b6e05a); transition: width .18s linear; }
@@ -39,6 +44,8 @@
 <div id="hud">
   <div id="tl"><div id="clock">17:36</div><div id="district">Puerto Sol</div></div>
   <div id="stars">☆☆☆☆☆</div>
+  <div id="ride"></div>
+  <div id="ammo-box"><span id="ammo">48</span><small>AMMO</small></div>
   <div id="bars">
     <div style="font-size:10px;letter-spacing:4px;color:#ffb27a">HEALTH</div>
     <div id="hp"><div id="hp-fill"></div></div>
@@ -55,7 +62,8 @@
   <button id="controls-btn">Controls</button>
   <div id="controls" hidden>
     <b>W A S D</b> move &nbsp; <b>Shift</b> sprint &nbsp; <b>Space</b> jump<br>
-    <b>Mouse drag / click</b> look around &nbsp; <b>Wheel</b> zoom<br>
+    <b>E</b> enter / leave a car &nbsp; <b>W S</b> throttle / brake &nbsp; <b>A D</b> steer<br>
+    <b>Left click</b> shoot &nbsp; <b>F / right click</b> punch &nbsp; <b>Mouse drag / click</b> look &nbsp; <b>Wheel</b> zoom<br>
     <b>Esc</b> release the mouse
   </div>
 </div>

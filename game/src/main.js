@@ -1,134 +1,162 @@
-// Boot and the one loop: input is read every frame, the world advances in fixed 1/60 s steps
-// (several in a slow frame, none in a fast one), and the renderer paints what is there. The game
-// moves between four screens: title, play, paused and game over.
-//
-// ?seed=N fixes the falling pattern. ?shot=start|play|end (with &seed=N) stages that scene
-// instead of running the loop, paints it twice and sets window.__shotReady for a screenshot.
-import { BEST_KEY, LIVES, STEP } from './config.js';
-import { createRandom } from './random.js';
-import { createWorld, EVENT_HIT, EVENT_OVER } from './world.js';
-import { ACTION_CONFIRM, ACTION_PAUSE, createInput } from './input.js';
-import { createRenderer, SCREEN_OVER, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
-import { stageShot } from './shots.js';
-
-/** The longest frame the loop catches up on; a longer stall (a hidden tab) is dropped, not replayed. */
-const MAX_FRAME = 0.25;
-
-const params = new URLSearchParams(window.location.search);
-const shot = params.get('shot');
-const seedParam = Number.parseInt(params.get('seed') ?? '', 10);
-const seed = Number.isInteger(seedParam) ? seedParam : Math.floor(Math.random() * 4294967296);
+import * as THREE from 'three';
+import { CFG } from './config.js';
+import { buildCity, createCityMeshes, districtAt } from './city.js';
+import { Player } from './player.js';
+import { ThirdPersonCamera } from './camera.js';
+import { HUD } from './hud.js';
+import { Minimap } from './minimap.js';
 
 const canvas = document.getElementById('game');
-const status = document.getElementById('status');
-const world = createWorld(createRandom(seed));
-const renderer = createRenderer(canvas);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-function readBest() {
-  try {
-    return Number.parseInt(window.localStorage.getItem(BEST_KEY) ?? '0', 10) || 0;
-  } catch {
-    return 0;
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(CFG.palette.fog, CFG.fog.near, CFG.fog.far);
+scene.background = skyTexture();
+
+function skyTexture() {
+  const c = document.createElement('canvas');
+  c.width = 8; c.height = 256;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 256);
+  grd.addColorStop(0, '#221838');
+  grd.addColorStop(0.42, '#6d3560');
+  grd.addColorStop(0.68, '#d95b3c');
+  grd.addColorStop(0.88, '#ffa85e');
+  grd.addColorStop(1, '#ffd79a');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 8, 256);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.mapping = THREE.EquirectangularReflectionMapping;
+  return t;
+}
+
+const camera = new THREE.PerspectiveCamera(CFG.camera.fov, window.innerWidth / window.innerHeight, 0.1, CFG.camera.far);
+
+const hemi = new THREE.HemisphereLight(CFG.palette.hemiSky, CFG.palette.hemiGround, 1.15);
+scene.add(hemi);
+const sunLight = new THREE.DirectionalLight(CFG.palette.sunLight, 1.45);
+scene.add(sunLight);
+
+// sun disc low over the bay
+const sunDisc = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+  grd.addColorStop(0, 'rgba(255,244,214,1)');
+  grd.addColorStop(0.45, 'rgba(255,206,130,.85)');
+  grd.addColorStop(1, 'rgba(255,150,80,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 64, 64);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false }));
+  sp.scale.set(150, 150, 1);
+  sp.position.set(240, 34, 420);
+  return sp;
+})();
+scene.add(sunDisc);
+
+const city = buildCity();
+scene.add(createCityMeshes(city));
+
+const player = new Player(scene);
+const cam = new ThirdPersonCamera(camera, canvas, city.colliders);
+const hud = new HUD();
+const minimap = new Minimap(city);
+
+const state = { mode: 'menu', health: 100, money: 1250, time: CFG.time.start, wanted: 0, district: 'Barrio Sol', cine: false };
+const keys = new Set();
+
+const title = document.getElementById('title');
+const controlsBox = document.getElementById('controls');
+document.getElementById('play').addEventListener('click', start);
+document.getElementById('controls-btn').addEventListener('click', () => { controlsBox.hidden = !controlsBox.hidden; });
+
+function start() {
+  state.mode = 'play';
+  title.classList.add('hidden');
+  canvas.focus();
+}
+
+window.addEventListener('keydown', (e) => {
+  keys.add(e.code);
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', (e) => keys.delete(e.code));
+window.addEventListener('blur', () => keys.clear());
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+const shot = new URLSearchParams(location.search).get('shot');
+if (shot) {
+  start();
+  if (shot === 'city') {
+    state.cine = true;
+    player.pos.set(60, 0, 150);
   }
 }
 
-function saveBest(value) {
-  try {
-    window.localStorage.setItem(BEST_KEY, String(value));
-  } catch {
-    // Storage can be off (private windows): the best score then lasts this visit only.
-  }
+const fwd = new THREE.Vector3();
+const right = new THREE.Vector3();
+const wish = new THREE.Vector3();
+
+function update(dt) {
+  // in-game day clock
+  state.time += dt * CFG.time.speed;
+  if (state.time >= CFG.time.dusk) state.time = CFG.time.dawn;
+  const t = (state.time - CFG.time.dawn) / (CFG.time.dusk - CFG.time.dawn);
+  const ang = Math.PI * (0.12 + t * 0.76);
+  sunLight.position.set(Math.cos(ang) * 240, Math.sin(ang) * 150 + 12, -200);
+  sunLight.intensity = 0.35 + Math.max(0, Math.sin(ang)) * 1.25;
+  hemi.intensity = 0.45 + Math.max(0, Math.sin(ang)) * 0.85;
+
+  if (state.mode !== 'play') return;
+
+  camera.getWorldDirection(fwd);
+  fwd.y = 0;
+  fwd.normalize();
+  right.crossVectors(fwd, camera.up).normalize();
+
+  const ix = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+  const iz = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
+  wish.set(0, 0, 0).addScaledVector(right, ix).addScaledVector(fwd, iz);
+  if (wish.lengthSq() > 0) wish.normalize();
+
+  const running = keys.has('ShiftLeft') || keys.has('ShiftRight');
+  player.update(dt, wish, running, keys.has('Space'), city.colliders, CFG.player.bounds);
+  cam.update(dt, player.pos);
+
+  state.district = districtAt(player.pos.x, player.pos.z);
+  hud.update({ health: state.health, money: state.money, time: state.time, wanted: state.wanted, district: state.district, speed: player.speed });
+  minimap.update(player.pos, player.facing);
 }
 
-function runShot(name) {
-  const scene = stageShot(name, world);
-  let painted = 0;
-  function paint() {
-    renderer.draw(world.state, scene.screen, scene.best);
-    painted += 1;
-    if (painted < 2) requestAnimationFrame(paint);
-    else window.__shotReady = true;
-  }
-  requestAnimationFrame(paint);
+function cinematic(now) {
+  const a = now * 0.00004;
+  camera.position.set(Math.cos(a) * 250, 120, Math.sin(a) * 250 + 40);
+  camera.lookAt(0, 8, 0);
 }
 
-function runGame() {
-  const input = createInput(canvas);
-  let screen = SCREEN_TITLE;
-  let best = readBest();
-  let accumulator = 0;
-  let last = performance.now();
-
-  // Screen readers (and anyone watching the page's text) hear the screen changes and each hit.
-  function announce(message) {
-    status.textContent = message;
-  }
-
-  function startGame() {
-    world.reset();
-    accumulator = 0;
-    screen = SCREEN_PLAY;
-    announce(`Playing. ${LIVES} lives.`);
-  }
-
-  function endGame() {
-    screen = SCREEN_OVER;
-    if (world.state.score > best) {
-      best = world.state.score;
-      saveBest(best);
-    }
-    announce(`Game over. Score ${world.state.score}. Best ${best}.`);
-  }
-
-  function handleActions() {
-    const actions = input.takeActions();
-    if (actions & ACTION_CONFIRM && (screen === SCREEN_TITLE || screen === SCREEN_OVER)) startGame();
-    else if (actions & ACTION_PAUSE && screen === SCREEN_PLAY) {
-      screen = SCREEN_PAUSED;
-      announce('Paused.');
-    } else if (actions & (ACTION_PAUSE | ACTION_CONFIRM) && screen === SCREEN_PAUSED) {
-      screen = SCREEN_PLAY;
-      announce('Playing.');
-    }
-  }
-
-  function step() {
-    if (screen === SCREEN_TITLE) {
-      world.step(STEP, 0, true);
-      return;
-    }
-    const events = world.step(STEP, input.direction(), false);
-    if (events & EVENT_OVER) endGame();
-    else if (events & EVENT_HIT) announce(world.state.lives === 1 ? 'Hit. 1 life left.' : `Hit. ${world.state.lives} lives left.`);
-  }
-
-  function frame(now) {
-    requestAnimationFrame(frame);
-    accumulator += Math.min((now - last) / 1000, MAX_FRAME);
-    last = now;
-    handleActions();
-    if (screen === SCREEN_TITLE || screen === SCREEN_PLAY) {
-      while (accumulator >= STEP && (screen === SCREEN_TITLE || screen === SCREEN_PLAY)) {
-        step();
-        accumulator -= STEP;
-      }
-    } else {
-      accumulator = 0;
-    }
-    renderer.draw(world.state, screen, best);
-  }
-
-  // Leaving the tab pauses a running game rather than letting blocks fall unseen.
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden && screen === SCREEN_PLAY) {
-      screen = SCREEN_PAUSED;
-      announce('Paused.');
-    }
-  });
-
-  announce('Block Dodger. Press Space or click to start.');
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  update(dt);
+  if (state.cine) cinematic(now);
+  renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 
-if (shot) runShot(shot);
-else runGame();
+hud.update({ health: state.health, money: state.money, time: state.time, wanted: 0, district: state.district, speed: 0 });
+minimap.update(player.pos, player.facing);
+requestAnimationFrame(frame);
+window.__sunset = { scene, camera, player, cam, state, renderer };

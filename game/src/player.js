@@ -20,7 +20,8 @@ export class Player {
 
     const torso = part(0.62, 0.74, 0.36, 0x3b6ea5); torso.position.y = 1.18;
     const head = part(0.38, 0.38, 0.36, 0xc98f6a); head.position.y = 1.74;
-    const hair = part(0.4, 0.12, 0.38, 0x2a1f1a); hair.position.y = 1.92;
+    const hair = part(0.42, 0.16, 0.4, 0x2a1f1a); hair.position.y = 1.9;
+    const nape = part(0.38, 0.26, 0.1, 0x2a1f1a); nape.position.set(0, 1.72, -0.15);
     const nose = part(0.1, 0.1, 0.12, 0xc98f6a); nose.position.set(0, 1.72, 0.2);
 
     // limbs hang from pivots at the joint so the swing looks right
@@ -38,7 +39,7 @@ export class Player {
     const legL = limb(-0.16, 0.8, 0.22, 0.8, 0.22, 0x2f3542);
     const legR = limb(0.16, 0.8, 0.22, 0.8, 0.22, 0x2f3542);
 
-    g.add(torso, head, hair, nose);
+    g.add(torso, head, hair, nape, nose);
     this.limbs = { armL, armR, legL, legR };
     g.position.copy(this.pos);
     scene.add(g);

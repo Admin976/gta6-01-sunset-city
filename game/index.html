@@ -25,7 +25,40 @@
   #speedo { position: absolute; right: 22px; bottom: 232px; text-align: right; }
   #speed { font-size: 34px; color: #ffe6b8; }
   #speedo small { display: block; font-size: 10px; letter-spacing: 3px; color: #ffb27a; }
-  #minimap { position: absolute; right: 20px; bottom: 20px; width: 200px; height: 200px; border: 2px solid rgba(255,255,255,.18); background: #0b0912; border-radius: 4px; }
+  #minimap { position: absolute; right: 20px; bottom: 20px; width: 200px; height: 200px; border: 2px solid rgba(255,255,255,.22); background: #0b0912; border-radius: 4px; }
+
+  #objective { position: absolute; left: 50%; top: 20px; transform: translateX(-50%); max-width: 560px; text-align: center;
+               font-size: 13px; letter-spacing: 2px; color: #ffe6b8; background: rgba(12,10,18,.62);
+               border-left: 3px solid #ffb25e; padding: 9px 18px; opacity: 0; transition: opacity .2s; }
+  #objective.on { opacity: 1; }
+  #objective b { display: block; color: #ffb25e; font-size: 10px; letter-spacing: 4px; margin-bottom: 3px; }
+  #subtitle { position: absolute; left: 50%; bottom: 108px; transform: translateX(-50%); max-width: 660px; text-align: center;
+              font-size: 15px; line-height: 1.5; color: #fff; background: rgba(10,8,16,.62); padding: 9px 20px;
+              border-radius: 4px; opacity: 0; transition: opacity .15s; }
+  #subtitle.on { opacity: 1; }
+  #subtitle b { display: block; color: #ffcf8a; font-size: 10px; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 3px; }
+  #banner { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); text-align: center; opacity: 0; transition: opacity .35s; }
+  #banner.on { opacity: 1; }
+  #banner .t { font-size: 34px; letter-spacing: 8px; color: #ffd9a0; text-shadow: 0 0 26px rgba(255,122,61,.6); }
+  #banner .s { font-size: 11px; letter-spacing: 5px; color: #ffb27a; text-transform: uppercase; margin-top: 6px; }
+
+  .overlay { position: fixed; inset: 0; z-index: 12; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+             background: radial-gradient(circle at 50% 44%, rgba(48,26,54,.92), rgba(11,8,15,.97) 74%); text-align: center; padding: 24px; }
+  .overlay[hidden] { display: none; }
+  .overlay h2 { margin: 0 0 6px; font-size: 40px; letter-spacing: 12px; color: #ffd9a0; }
+  .overlay p { margin: 0 0 8px; color: #cfc3d8; font-size: 13px; letter-spacing: 2px; }
+  .overlay button { cursor: pointer; font: inherit; font-size: 13px; letter-spacing: 4px; text-transform: uppercase; min-width: 240px;
+                    padding: 11px 26px; color: #ffe6b8; background: rgba(255,255,255,.06); border: 1px solid rgba(255,212,160,.45); }
+  .overlay button:hover { background: rgba(255,180,120,.18); }
+  #p-box, #mission-list { max-width: 560px; width: 100%; font-size: 12px; line-height: 1.9; color: #cfc3d8; text-align: left;
+                          margin-top: 6px; background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.12); padding: 12px 16px; }
+  #p-box[hidden], #mission-list[hidden] { display: none; }
+  #p-box b, #mission-list b { color: #ffd9a0; }
+  #mission-list .m { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px dashed rgba(255,255,255,.12); padding: 3px 0; }
+  #mission-list .m.done { color: #8fd89a; }
+  #mission-list .m.locked { color: #6b6478; }
+  #mission-list .m span:last-child { color: #ffcf8a; }
+
   #title { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center;
            background: radial-gradient(circle at 50% 42%, rgba(60,32,64,.94), rgba(13,10,18,.97) 72%); }
   #title.hidden { display: none; }
@@ -44,6 +77,7 @@
 <div id="hud">
   <div id="tl"><div id="clock">17:36</div><div id="district">Puerto Sol</div></div>
   <div id="stars">☆☆☆☆☆</div>
+  <div id="objective"></div>
   <div id="ride"></div>
   <div id="ammo-box"><span id="ammo">48</span><small>AMMO</small></div>
   <div id="bars">
@@ -52,6 +86,8 @@
     <div id="money">$0</div>
   </div>
   <div id="speedo"><span id="speed">0</span><small>KM/H</small></div>
+  <div id="banner"><div class="t"></div><div class="s"></div></div>
+  <div id="subtitle"></div>
   <canvas id="minimap" width="200" height="200" aria-label="City minimap"></canvas>
 </div>
 
@@ -63,9 +99,29 @@
   <div id="controls" hidden>
     <b>W A S D</b> move &nbsp; <b>Shift</b> sprint &nbsp; <b>Space</b> jump<br>
     <b>E</b> enter / leave a car &nbsp; <b>W S</b> throttle / brake &nbsp; <b>A D</b> steer<br>
-    <b>Left click</b> shoot &nbsp; <b>F / right click</b> punch &nbsp; <b>Mouse drag / click</b> look &nbsp; <b>Wheel</b> zoom<br>
-    <b>Esc</b> release the mouse
+    <b>Left click</b> shoot &nbsp; <b>F / right click</b> punch &nbsp; <b>Mouse drag</b> look &nbsp; <b>Wheel</b> zoom<br>
+    <b>Esc</b> pause &nbsp; <b>M</b> mission log &nbsp; <b>R</b> restart current mission
   </div>
+</div>
+
+<div id="pause" class="overlay" hidden>
+  <h2>PAUSED</h2>
+  <button id="resume">Resume</button>
+  <button id="p-controls">Controls</button>
+  <button id="p-missions">Missions</button>
+  <button id="restart">Restart</button>
+  <div id="p-box" hidden>
+    <b>W A S D</b> move &nbsp; <b>Shift</b> sprint &nbsp; <b>Space</b> jump &nbsp; <b>E</b> car<br>
+    <b>Left click</b> shoot &nbsp; <b>F</b> punch &nbsp; <b>Mouse drag</b> look &nbsp; <b>Wheel</b> zoom<br>
+    <b>Esc</b> pause &nbsp; <b>M</b> mission log &nbsp; <b>R</b> restart mission
+  </div>
+  <div id="mission-list" hidden></div>
+</div>
+
+<div id="gameover" class="overlay" hidden>
+  <h2>WASTED</h2>
+  <p id="go-sub">Puerto Sol collects. Try again.</p>
+  <button id="retry">Retry</button>
 </div>
 
 <script type="importmap">

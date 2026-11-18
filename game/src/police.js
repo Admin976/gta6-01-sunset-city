@@ -46,15 +46,28 @@ export class Police {
   }
 
   _cruiser() {
-    const v = buildVehicle('sedan', 0xe9eef2);
-    const red = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.2, 0.36), new THREE.MeshBasicMaterial({ color: 0xff2a2a }));
-    red.position.x = -0.4;
-    const blue = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.2, 0.36), new THREE.MeshBasicMaterial({ color: 0x2a6bff }));
-    blue.position.x = 0.4;
+    const v = buildVehicle('sedan', 0x1b2740);
+    // white doors and a white roof stripe, so a cruiser reads as police from any angle
+    const white = new THREE.MeshLambertMaterial({ color: 0xf2f4f6 });
+    for (const sx of [-1, 1]) {
+      const door = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.52, 1.9), white);
+      door.position.set(sx * 0.96, 0.86, 0);
+      v.group.add(door);
+    }
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.07, 2.0), white);
+    stripe.position.set(0, 1.33, -0.1);
+    v.group.add(stripe);
+    const red = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.26, 0.42), new THREE.MeshBasicMaterial({ color: 0xff2a2a }));
+    red.position.x = -0.5;
+    const blue = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.26, 0.42), new THREE.MeshBasicMaterial({ color: 0x2a6bff }));
+    blue.position.x = 0.5;
     const bar = new THREE.Group();
     bar.add(red, blue);
-    bar.position.set(0, 1.64, 0.05);
+    bar.position.set(0, 1.98, 0.05);   // above the glass house roof, or it hides inside the cabin
     v.group.add(bar);
+    const sign = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.16, 0.4), white);
+    sign.position.set(0, 2.14, 0.05);
+    v.group.add(sign);
     this.scene.add(v.group);
     return { group: v.group, wheels: v.wheels, red, blue, pos: new THREE.Vector3(), heading: 0, speed: 0, officers: 0 };
   }
